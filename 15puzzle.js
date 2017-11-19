@@ -90,7 +90,7 @@ jQuery(document).ready(function(){
 		};
 	}
 
-	function mcts() {
+  function getPossibleMoves() {
 		 // get avaliable moves
 			 var actualPosition = localizeTitleActualPosition(blankTitle);
 			 console.log(actualPosition);
@@ -103,26 +103,52 @@ jQuery(document).ready(function(){
 			 titlesPositionsArray = titlesPositionsArray.filter(function (title) {
 				 return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined';
 			 }).map((title) => puzzleArray[title.row][title.column]);
+
+       return titlesPositionsArray;
+  }
+	function mcts() {
 		 // get avaliable moves
-     let rootNode = new Node();
-     rootNode.leafNode = false;
-     rootNode.childrenNodes = [new Node(), new Node()]
+			 // var actualPosition = localizeTitleActualPosition(blankTitle);
+			 // console.log(actualPosition);
+			 // var upperTitle = {row: actualPosition.row-1,  column: actualPosition.column};
+			 // var downTitle = {row: actualPosition.row+1,  column: actualPosition.column};
+			 // var leftTitle = {row: actualPosition.row,  column: actualPosition.column-1};
+			 // var rightTitle = {row: actualPosition.row,  column: actualPosition.column+1};
+       //
+			 // var titlesPositionsArray = [upperTitle, leftTitle, downTitle, rightTitle]; // pozycje Title
+			 // titlesPositionsArray = titlesPositionsArray.filter(function (title) {
+				//  return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined';
+			 // }).map((title) => puzzleArray[title.row][title.column]);
+
+       debugger;
+     var n_moves = 0;
+     let rootNode = new Node(puzzleArray, 16);
+     while(rootNode.leafNode !== false) {
+       if(rootNode.leafNode) {
+         rootNode = rootNode.expand();
+       }
+       rootNode.setLeafNode(false);
+     }
+     
+     // rootNode.leafNode = false;
+     // rootNode.childrenNodes = [new Node(puzzleArray), new Node(puzzleArray)]
      // terminal condition
      if(puzzleArray === SOLVED_PUZZLE) {
        console.log('FUCK YEAAAH');
      }
-     let currentNode = rootNode;
-		 // while(!currentNode.leafNode) {
-       const biggestValue = currentNode.childrenNodes.reduce(function(a, b, i, arr) {
-         console.log(a.calculateUCB(), b.calculateUCB());
-         return Math.min(a.calculateUCB(), b.calculateUCB())
-       });
-       const newNode = currentNode.childrenNodes.find(function(node){
-         console.log(node.calculateUCB(), biggestValue);
-         return node.calculateUCB() == biggestValue
-       })
+     // let currentNode = rootNode;
+		 // // while(!currentNode.leafNode) {
+     //   const biggestValue = currentNode.childrenNodes.reduce(function(a, b, i, arr) {
+     //     console.log(a.calculateUCB(), b.calculateUCB());
+     //     return Math.min(a.calculateUCB(), b.calculateUCB())
+     //   });
+     //   const newNode = currentNode.childrenNodes.find(function(node){
+     //     console.log(node.calculateUCB(), biggestValue);
+     //     return node.calculateUCB() == biggestValue
+     //   })
      // }
      // Extention of all possible choices
+
 
 		 debugger;
 	}

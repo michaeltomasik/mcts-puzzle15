@@ -1,22 +1,36 @@
 let totalNumberOfSimulations = 0;
-const columns = 4;
-const rows = 4;
-const titles = 16
+const columns = 3;
+const rows = 3;
+const titles = 9;
+
+var SOLVED_PUZZLE = [[1,2,3],[4,5,6],[7,8,9]];
 
 class Node {
-  constructor(state, action) {
+  constructor(state, action, parentNode) {
     this.leafNode = true;
     this.childrenNodes = [];
     this.visited = 0;
     this.totalScore = 0;
     this.state = state;
     this.action = action;
+    this.parentNode = parentNode || null;
     totalNumberOfSimulations++;
-    console.log(totalNumberOfSimulations);
   }
 
   setLeafNode (bool) {
     this.leafNode = bool;
+  }
+
+  setChildrenNodes (childrenNodes) {
+    this.childrenNodes = childrenNodes;
+  }
+
+  setTotalScore (value) {
+    this.totalScore = value;
+  }
+
+  setVisited (visited) {
+    this.visited = visited
   }
 
   calculateUCB() {
@@ -25,23 +39,22 @@ class Node {
     return (t/n) + (2*Math.cbrt(Math.log(totalNumberOfSimulations)/n)) || 999999999999;
   }
   // return expanded node
-  expand() {
-    debugger;
-    const possibleMoves = this.getPossibleMoves();
+  expand(node, lastMove) {
+    const possibleMoves = this.getPossibleMoves(node, lastMove);
     // setting childern nodes
-    this.childrenNodes = possibleMoves.map((movedTitle) => {
-      return new Node(this.moveTitle(movedTitle, this.state), movedTitle)
-    })
-    console.log(this.childrenNodes);
-    // const bestMoveNode = this.getBestMove(this.childrenNodes);
-    console.log(possibleMoves);
-    return this;
+    node.childrenNodes = possibleMoves
+    node.setLeafNode(false);
+    const r = Math.random();
+    const nodeLength = node.childrenNodes.length -1;
+    const random = Math.floor(r * nodeLength);
+    return node.childrenNodes[random]; // chose randomly
   }
 
-  // return state after move
-  moveTitle(id, puzzleArray) {
-    const blankTitle = 16;
-		var zeroTitlePosition = this.localizeTitleActualPosition(blankTitle, puzzleArray)//this.findTitlePosition(blankTitle, puzzleArray);
+  // return snewArrpuzzleArraytate after move
+  moveTitle(id, arr) {
+    const puzzleArray = arr;
+    const blankTitle = titles;
+		var zeroTitlePosition = this.localizeTitleActualPosition(blankTitle, arr.slice(0))//this.findTitlePosition(blankTitle, puzzleArray);
 		var titleToSwitchPosition = this.localizeTitleActualPosition(id, puzzleArray);//this.findTitlePosition(id, puzzleArray);
 
 		if (this.isTitleNextToEachother(zeroTitlePosition,titleToSwitchPosition)) {
@@ -53,8 +66,8 @@ class Node {
 	}
 
   isTitleNextToEachother(zeroTitlePosition, titleToSwitchPosition) {
-		return  (zeroTitlePosition.row-1 == titleToSwitchPosition.row && zeroTitlePosition.column == titleToSwitchPosition.column ) ||
-						(zeroTitlePosition.column+1 == titleToSwitchPosition.column && zeroTitlePosition.row == titleToSwitchPosition.row ) ||
+		return  (zeroTitlePosition.column+1 == titleToSwitchPosition.column && zeroTitlePosition.row == titleToSwitchPosition.row ) ||
+        		(zeroTitlePosition.column-1 == titleToSwitchPosition.column && zeroTitlePosition.row == titleToSwitchPosition.row ) ||
 						(zeroTitlePosition.row-1 == titleToSwitchPosition.row && zeroTitlePosition.column == titleToSwitchPosition.column ) ||
 						(zeroTitlePosition.row+1 == titleToSwitchPosition.row && zeroTitlePosition.column == titleToSwitchPosition.column );
 	}
@@ -77,12 +90,12 @@ class Node {
 		currentColumnPosition = 0;
 		return result;
 	}
-
-  getPossibleMoves() {
-    var blankTitle = 16;
-    const puzzleArray = this.state;
+  // return Array of Nodes
+  getPossibleMoves(node, lastMove) {
+    var blankTitle = titles;
+    const puzzleArray = node.state;
     var actualPosition = this.localizeTitleActualPosition(blankTitle, puzzleArray);
-    console.log(actualPosition);
+
     var upperTitle = {row: actualPosition.row-1,  column: actualPosition.column};
     var downTitle = {row: actualPosition.row+1,  column: actualPosition.column};
     var leftTitle = {row: actualPosition.row,  column: actualPosition.column-1};
@@ -90,10 +103,92 @@ class Node {
 
     var titlesPositionsArray = [upperTitle, leftTitle, downTitle, rightTitle]; // pozycje Title
     titlesPositionsArray = titlesPositionsArray.filter(function (title) {
-      return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined';
-    }).map((title) => puzzleArray[title.row][title.column]);
-    console.log(titlesPositionsArray);
+      return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined' && lastMove != puzzleArray[title.row][title.column];
+    }).map((title) => {
+      const newArr = JSON.parse(JSON.stringify(puzzleArray)); // slice() not working It was passing by reference :/
+      const id = newArr[title.row][title.column];
+      const newNode = node.childrenNodes.find(n=> n.action === id) || new Node(this.moveTitle(id, newArr), id, node);
+      // const newNode = new Node(this.moveTitle(id, newArr), id, node);
+      return newNode;
+    });
     return titlesPositionsArray;
+  }
+  // node => valueOfState
+  evaluateStateHeuristic(node) {
+    let valueOfState = 0;
+    let max = titles*rows;
+    let matching = 0;
+
+    const originalStateMapToCords = SOLVED_PUZZLE.map(rows => {
+      return rows.map(col => {
+        return this.localizeTitleActualPosition(col, SOLVED_PUZZLE)
+      })
+    })
+    const currentStateMapToCords = node.state.map(rows => {
+      return rows.map(col => {
+        return this.localizeTitleActualPosition(col, node.state)
+      })
+    })
+
+    for (var i = 0; i < rows; i++) {
+			for (var ii = 0; ii < columns; ii++) {
+          if(SOLVED_PUZZLE[i][ii] === node.state[i][ii]){
+            matching++;
+          }
+          const current = this.localizeTitleActualPosition(SOLVED_PUZZLE[i][ii], node.state) // curent position needs to match original titles
+          valueOfState += Math.abs(originalStateMapToCords[i][ii].row - currentStateMapToCords[current.row][current.column].row)
+    			valueOfState += Math.abs(originalStateMapToCords[i][ii].column - currentStateMapToCords[current.row][current.column].column)
+			};
+		};
+    // if (this.terminalState(node.state)) {
+    //   return 1;
+    // }
+    // for (var i = 0; i < rows; i++) {
+		// 	for (var ii = 0; ii < columns; ii++) {
+    //     if(SOLVED_PUZZLE[i][ii] === node.state[i][ii]){
+    //       valueOfState++;
+    //     }
+    //   }
+    // }
+    if (matching == titles) {
+      return 99;
+    }
+    
+    return valueOfState;
+  }
+
+  simulate(node) {
+    // get random move
+    // while( gameIsNot finished)
+    const maxValue = 99;// CHECK IT BUT is suppose to beok every title has max 6 moves to get to the futhest 6*15
+    let currentNode = Object.create(node);
+    let index = 1000 // if you not going to win within 100 moves you are loser
+    while(!this.terminalState(currentNode.state)) {
+        if (index === 0) {
+          return this.evaluateStateHeuristic(currentNode);
+        }
+        const avaliableMoves = this.getPossibleMoves(node, titles)
+
+ 			  currentNode.setChildrenNodes(avaliableMoves);
+        const r = Math.random();
+        const nodeLength = currentNode.childrenNodes.length -1;
+        const random = Math.floor(r * nodeLength);// (max - min) + min;
+        currentNode = currentNode.childrenNodes[random];
+        index--;
+    }
+    if (index<200) {
+      return maxValue
+    }
+    return 999;
+  }
+
+  terminalState (state) {
+    return this.arraysEqual(state, SOLVED_PUZZLE);
+  }
+
+  arraysEqual(a1,a2) {
+    /* WARNING: arrays must not contain {objects} or behavior may be undefined */
+    return JSON.stringify(a1)==JSON.stringify(a2);
   }
 
   localizeTitleActualPosition(titleID, puzzleArray) {
@@ -107,18 +202,27 @@ class Node {
 	}
   // return number to change
   getBestMove(childrenNodes) {
-  debugger;
     const biggestValue = childrenNodes.map((node)=> {
       return node.calculateUCB();
     }).reduce(function(a, b, i, arr) {
-      console.log(a, b, childrenNodes);
-      return Math.min(a, b)
+      return Math.max(a, b)
     });
     const newNode = childrenNodes.find(function(node){
-      console.log(node.calculateUCB(), biggestValue);
       return node.calculateUCB() == biggestValue
     })
     return newNode;
+  }
+
+  getMCTSMove(node) {
+    const biggestValue = node.childrenNodes.map((node)=> {
+      return node.totalScore;
+    }).reduce(function(a, b, i, arr) {
+      return Math.max(a, b)
+    });
+    const newNode = node.childrenNodes.find(function(node){
+      return node.totalScore == biggestValue
+    })
+    return newNode.action;
   }
 
 }

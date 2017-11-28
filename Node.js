@@ -151,12 +151,9 @@ class Node {
     			valueOfState += Math.abs(originalStateMapToCords[i][ii].column - currentStateMapToCords[current.row][current.column].column)
 			};
 		};
-
-    if (matching == titles) {
-      console.log('rozwiazanie');
-      return 99;
+    if (valueOfState < 5) {
+      return 66;
     }
-
     return 36-valueOfState;
   }
 

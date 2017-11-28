@@ -73,7 +73,7 @@ jQuery(document).ready(function(){
 
      var n_moves = 0;
      let rootNode = new Node(state, titles, null);
-     let iterations = 100;
+     let iterations = 150;
      while(iterations){
        let childNode = rootNode;
        while(!terminalState(childNode.state)) {

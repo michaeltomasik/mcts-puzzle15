@@ -1,15 +1,16 @@
 jQuery(document).ready(function(){
 
-	var titles = 16;
-	var blankTitle = 16;
+	var titles = 9;
+	var blankTitle = 9;
 	var startPosition = 10;
-	var rows = 4;
-	var columns = 4;
+	var rows = 3;
+	var columns = 3;
 	var titleSize = 100; // 100 x 100 rectangle
 	var currentRowPosition = 0;
 	var currentColumnPosition = 0;
 	var puzzleName = "puzzle15";
-	var SOLVED_PUZZLE = [[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]];
+	var SOLVED_PUZZLE = [[1,2,3],[4,5,6],[7,8,9]];
+  var lastMove = 9;
 
 	var orginalTitlePositionMap = {};
 	// FIND POSITION
@@ -30,8 +31,13 @@ jQuery(document).ready(function(){
 	    renderBoard();
 	});
 
+
 	$('#AI').click(function() {
-	    solvePuzzle();
+    var pollTimer = window.setInterval(function() {
+      if (JSON.stringify(puzzleArray)!=JSON.stringify(SOLVED_PUZZLE)) {
+        solvePuzzle();
+      }
+    }, 10);
 	});
 
 	function refreshDOM() {
@@ -42,8 +48,7 @@ jQuery(document).ready(function(){
 		$('.block').click(function() {
 			var blockId = $(this).attr('id');
 		    moveTitle(blockId);
-		    renderBoard();
-				mcts();
+  	    renderBoard();
 		});
 	}
 
@@ -57,137 +62,65 @@ jQuery(document).ready(function(){
 	}
 
 	function solvePuzzle() {
-		var titlesArray = [];
-		var i = 1;
-		//for (var i = 1; i < titles; i++) {
-			var route = getShortestRoute();
-			console.log(route);
-			moveTitle(puzzleArray[route.row][route.column]);
-			renderBoard();
-			console.log(i+': '+route);
-		//}
-
-		console.log( orginalTitlePositionMap, 'juz', SOLVED_PUZZLE);
+    const getTitleIdToMove = mcts(puzzleArray);
+    lastMove = getTitleIdToMove
+    const titleId = 'block'+getTitleIdToMove
+    moveTitle(titleId);
+    renderBoard();
 	}
 
-	function localizeTitleStartPosition(titleID) {
-		for (var i = 0; i < rows; i++) {
-			for (var ii = 0; ii < columns; ii++) {
-				if(titleID == SOLVED_PUZZLE[i][ii]){
-					return {row:i, column:ii};
-				}
-			};
-		};
-	}
+	function mcts(state) {
 
-	function localizeTitleActualPosition(titleID) {
-		for (var i = 0; i < rows; i++) {
-			for (var ii = 0; ii < columns; ii++) {
-				if(titleID == puzzleArray[i][ii]){
-					return {row:i, column:ii};
-				}
-			};
-		};
-	}
+     var n_moves = 0;
+     let rootNode = new Node(state, titles, null);
+     let iterations = 150;
+     while(iterations){
+       let childNode = rootNode;
+       while(!terminalState(childNode.state)) {
+         if(childNode.leafNode) {
+           childNode = childNode.expand(childNode, lastMove);
+           break;
+         } else {
+           const possibleMoves = childNode.getPossibleMoves(childNode, lastMove);
+           childNode.setLeafNode(false);
+           childNode = childNode.getBestMove(possibleMoves);
 
-	function mcts() {
-		 // get avaliable moves
-			 var actualPosition = localizeTitleActualPosition(blankTitle);
-			 console.log(actualPosition);
-			 var upperTitle = {row: actualPosition.row-1,  column: actualPosition.column};
-			 var downTitle = {row: actualPosition.row+1,  column: actualPosition.column};
-			 var leftTitle = {row: actualPosition.row,  column: actualPosition.column-1};
-			 var rightTitle = {row: actualPosition.row,  column: actualPosition.column+1};
+         }
+       }
 
-			 var titlesPositionsArray = [upperTitle, leftTitle, downTitle, rightTitle]; // pozycje Title
-			 titlesPositionsArray = titlesPositionsArray.filter(function (title) {
-				 return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined';
-			 }).map((title) => puzzleArray[title.row][title.column]);
-		 // get avaliable moves
-     let rootNode = new Node();
-     rootNode.leafNode = false;
-     rootNode.childrenNodes = [new Node(), new Node()]
-     // terminal condition
-     if(puzzleArray === SOLVED_PUZZLE) {
-       console.log('FUCK YEAAAH');
+       if (childNode.totalScore !== 0) {
+         const possibleMoves = childNode.getPossibleMoves(childNode, lastMove);
+         childNode.setLeafNode(false);
+         childNode = childNode.getBestMove(possibleMoves);
+       }
+       let delta = childNode.simulate(childNode);
+
+       while (childNode) {
+         childNode.setVisited(childNode.visited + 1);
+         childNode.setTotalScore(delta+childNode.totalScore);
+         if(childNode.parentNode === null){
+           rootNode = childNode;
+         }
+         childNode = childNode.parentNode;
+       }
+       iterations--;
      }
-     let currentNode = rootNode;
-		 // while(!currentNode.leafNode) {
-       const biggestValue = currentNode.childrenNodes.reduce(function(a, b, i, arr) {
-         console.log(a.calculateUCB(), b.calculateUCB());
-         return Math.min(a.calculateUCB(), b.calculateUCB())
-       });
-       const newNode = currentNode.childrenNodes.find(function(node){
-         console.log(node.calculateUCB(), biggestValue);
-         return node.calculateUCB() == biggestValue
-       })
-     // }
-     // Extention of all possible choices
 
-		 debugger;
+     const move = rootNode.getMCTSMove(rootNode);
+     return move;
 	}
 
-	// function getShortestRoute() {
-	//  var actualPosition = localizeTitleActualPosition(16);
-	//  console.log(actualPosition);
-	//  var upperTitle = {row: actualPosition.row-1,  column: actualPosition.column};
-	//  var downTitle = {row: actualPosition.row+1,  column: actualPosition.column};
-	//  var leftTitle = {row: actualPosition.row,  column: actualPosition.column-1};
-	//  var rightTitle = {row: actualPosition.row,  column: actualPosition.column+1};
-	//  var titlesPositionsArray = [upperTitle, leftTitle, downTitle, rightTitle]; // pozycje Title
-	//  titlesPositionsArray = shuffle(titlesPositionsArray);
-	//  var shortest = null;
-	//  var returnTitle = {};
-  //
-	//  $.map( titlesPositionsArray, function (title){
-	// 	 if (title.row > 0 && title.column > 0) {
-	// 		 var testArray = $.extend(true, [], puzzleArray);
-	// 		 console.log(testArray, title);
-	// 		 var testTitle = testArray[title.row-1][title.column-1];
-	// 		 var testedArray = heuristicMoveTitle(testArray, testTitle);
-	// 		 var route = evaluateHeuristic(testedArray);
-	// 		 console.log('evaluateHeuristic',route);
-	// 		if(route < shortest || shortest === null) {
-	// 			shortest = route;
-	// 			returnTitle = title;
-	// 		}
-	// 	}
-	//  });
-  //
-	// return returnTitle;
-	// }
-  //
-	// function evaluateHeuristic(estimatedBoardPosition) {
-	// 	var estimatedHeuristic = 0;
-	// 	for (var i = 0; i < rows; i++) {
-	// 		for (var ii = 0; ii < columns; ii++) {
-	// 			if(estimatedBoardPosition[i][ii] != SOLVED_PUZZLE[i][ii]){ //dla kazdego co sie nei zgadza
-	// 				var titleID = estimatedBoardPosition[i][ii] //biore id
-	// 				var actualPosition = localizeTitleActualPosition(titleID); // znajduje jego pozycje
-	// 				var targetPosition = orginalTitlePositionMap[titleID]; // znajduje orginalna pozycje
-  //
-	// 				estimatedHeuristic = estimatedHeuristic +      // Licze heurystyke dla danego ID
-	// 					Math.abs(actualPosition.column - targetPosition.column) +
-	// 				  Math.abs(actualPosition.row - targetPosition.row);
-	// 			}
-	// 		};
-	// 	};
-	// 	return estimatedHeuristic;
-	// }
-  //
-	// function heuristicMoveTitle(testedArray, id) {
-	// 	var zeroTitlePosition = findTitlePosition(16);
-	// 	var titleToSwitchPosition = findTitlePosition(id);
-  //
-	// 	if (isTitleNextToEachother(zeroTitlePosition,titleToSwitchPosition)) {
-	// 			testedArray[zeroTitlePosition[0]][zeroTitlePosition[1]] = id;
-	// 			testedArray[titleToSwitchPosition[0]][titleToSwitchPosition[1]] = 16;
-	// 	}
-	// 	return testedArray;
-	// }
+  function terminalState (state) {
+    return arraysEqual(state, SOLVED_PUZZLE);
+  }
+
+  function arraysEqual(a1,a2) {
+    /* WARNING: arrays must not contain {objects} or behavior may be undefined */
+    return JSON.stringify(a1)==JSON.stringify(a2);
+}
 
 	var uniqueRandoms = [];
-	var numRandoms = 16;
+	var numRandoms = titles;
 	function makeUniqueRandom() {
 	    // refill the array if needed
 	    if (!uniqueRandoms.length) {

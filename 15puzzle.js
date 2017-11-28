@@ -10,7 +10,7 @@ jQuery(document).ready(function(){
 	var currentColumnPosition = 0;
 	var puzzleName = "puzzle15";
 	var SOLVED_PUZZLE = [[1,2,3],[4,5,6],[7,8,9]];
-  var lastMove = 16;
+  var lastMove = 9;
 
 	var orginalTitlePositionMap = {};
 	// FIND POSITION
@@ -34,9 +34,9 @@ jQuery(document).ready(function(){
 
 	$('#AI').click(function() {
     var pollTimer = window.setInterval(function() {
-        if (JSON.stringify(puzzleArray)!=JSON.stringify(SOLVED_PUZZLE)) {
-          solvePuzzle();
-        }
+      if (JSON.stringify(puzzleArray)!=JSON.stringify(SOLVED_PUZZLE)) {
+        solvePuzzle();
+      }
     }, 10);
 	});
 
@@ -48,6 +48,7 @@ jQuery(document).ready(function(){
 		$('.block').click(function() {
 			var blockId = $(this).attr('id');
 		    moveTitle(blockId);
+  	    renderBoard();
 		});
 	}
 
@@ -71,8 +72,8 @@ jQuery(document).ready(function(){
 	function mcts(state) {
 
      var n_moves = 0;
-     let rootNode = new Node(state, 16, null);
-     let iterations = 600;
+     let rootNode = new Node(state, titles, null);
+     let iterations = 100;
      while(iterations){
        let childNode = rootNode;
        while(!terminalState(childNode.state)) {
@@ -87,11 +88,11 @@ jQuery(document).ready(function(){
          }
        }
 
-       if(terminalState(childNode.state)){
-         alert('Wygrales')
-         break;
+       if (childNode.totalScore !== 0) {
+         const possibleMoves = childNode.getPossibleMoves(childNode, lastMove);
+         childNode.setLeafNode(false);
+         childNode = childNode.getBestMove(possibleMoves);
        }
-
        let delta = childNode.simulate(childNode);
 
        while (childNode) {

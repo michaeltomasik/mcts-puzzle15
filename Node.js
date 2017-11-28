@@ -5,6 +5,8 @@ const titles = 9;
 
 var SOLVED_PUZZLE = [[1,2,3],[4,5,6],[7,8,9]];
 
+const blockTitlesRows = [SOLVED_PUZZLE[0]];
+
 class Node {
   constructor(state, action, parentNode) {
     this.leafNode = true;
@@ -95,6 +97,13 @@ class Node {
     var blankTitle = titles;
     const puzzleArray = node.state;
     var actualPosition = this.localizeTitleActualPosition(blankTitle, puzzleArray);
+    var blockedMoves = [];
+
+    for (var i = 0; i < rows; i++) {
+      if (JSON.stringify(node.state[i])==JSON.stringify(blockTitlesRows[i])) {
+        blockedMoves = [...blockedMoves, ...node.state[i]];
+      }
+    }
 
     var upperTitle = {row: actualPosition.row-1,  column: actualPosition.column};
     var downTitle = {row: actualPosition.row+1,  column: actualPosition.column};
@@ -103,7 +112,9 @@ class Node {
 
     var titlesPositionsArray = [upperTitle, leftTitle, downTitle, rightTitle]; // pozycje Title
     titlesPositionsArray = titlesPositionsArray.filter(function (title) {
-      return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined' && lastMove != puzzleArray[title.row][title.column];
+      return typeof(puzzleArray[title.row]) != 'undefined' && typeof(puzzleArray[title.row][title.column]) != 'undefined'
+      && lastMove != puzzleArray[title.row][title.column]
+      && blockedMoves.indexOf(puzzleArray[title.row][title.column]) == -1;
     }).map((title) => {
       const newArr = JSON.parse(JSON.stringify(puzzleArray)); // slice() not working It was passing by reference :/
       const id = newArr[title.row][title.column];
@@ -140,21 +151,13 @@ class Node {
     			valueOfState += Math.abs(originalStateMapToCords[i][ii].column - currentStateMapToCords[current.row][current.column].column)
 			};
 		};
-    // if (this.terminalState(node.state)) {
-    //   return 1;
-    // }
-    // for (var i = 0; i < rows; i++) {
-		// 	for (var ii = 0; ii < columns; ii++) {
-    //     if(SOLVED_PUZZLE[i][ii] === node.state[i][ii]){
-    //       valueOfState++;
-    //     }
-    //   }
-    // }
+
     if (matching == titles) {
+      console.log('rozwiazanie');
       return 99;
     }
-    
-    return valueOfState;
+
+    return 36-valueOfState;
   }
 
   simulate(node) {
@@ -162,7 +165,7 @@ class Node {
     // while( gameIsNot finished)
     const maxValue = 99;// CHECK IT BUT is suppose to beok every title has max 6 moves to get to the futhest 6*15
     let currentNode = Object.create(node);
-    let index = 1000 // if you not going to win within 100 moves you are loser
+    let index = 100 // if you not going to win within 100 moves you are loser
     while(!this.terminalState(currentNode.state)) {
         if (index === 0) {
           return this.evaluateStateHeuristic(currentNode);
@@ -176,10 +179,10 @@ class Node {
         currentNode = currentNode.childrenNodes[random];
         index--;
     }
-    if (index<200) {
-      return maxValue
-    }
-    return 999;
+    // if (index<200) {
+    //   return maxValue
+    // }
+    return 99;
   }
 
   terminalState (state) {
